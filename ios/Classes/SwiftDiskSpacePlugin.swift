@@ -47,22 +47,52 @@ extension UIDevice {
      Examples: A video that the user has explicitly requested to watch but has not yet finished watching or an audio file that the user has requested to download.
      This value should not be used in determining if there is room for an irreplaceable resource. In the case of irreplaceable resources, always attempt to save the resource regardless of available capacity and handle failure as gracefully as possible.
      */
-    var freeDiskSpaceInBytes:Int64 {
-        if #available(iOS 11.0, *) {
-            if let space = try? URL(fileURLWithPath: NSHomeDirectory() as String).resourceValues(forKeys: [URLResourceKey.volumeAvailableCapacityForImportantUsageKey]).volumeAvailableCapacityForImportantUsage {
-                return space ?? 0
-            } else {
-                return 0
-            }
-        } else {
-            if let systemAttributes = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory() as String),
-            let freeSpace = (systemAttributes[FileAttributeKey.systemFreeSize] as? NSNumber)?.int64Value {
-                return freeSpace
-            } else {
-                return 0
-            }
+//    var freeDiskSpaceInBytes:Int64 {
+//        if #available(iOS 11.0, *) {
+//            if let space = try? URL(fileURLWithPath: NSHomeDirectory() as String).resourceValues(forKeys: [URLResourceKey.volumeAvailableCapacityForImportantUsageKey]).volumeAvailableCapacityForImportantUsage {
+//                return space ?? 0
+//            } else {
+//                return 0
+//            }
+//        } else {
+//            if let systemAttributes = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory() as String),
+//            let freeSpace = (systemAttributes[FileAttributeKey.systemFreeSize] as? NSNumber)?.int64Value {
+//                return freeSpace
+//            } else {
+//                return 0
+//            }
+//        }
+//    }
+    //  Converted to Swift 5.2 by Swiftify v5.2.23024 - https://swiftify.com/
+    var freeDiskSpaceInBytes:UInt64 {
+
+        var totalFreeSpace: UInt64 = 0
+
+        var error: Error? = nil
+
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).map(\.path)
+
+        var dictionary: [FileAttributeKey : Any]? = nil
+        do {
+            dictionary = try FileManager.default.attributesOfFileSystem(forPath: paths.last ?? "")
+        } catch {
         }
+
+        if let dictionary = dictionary {
+
+            let freeFileSystemSizeInBytes = dictionary[.systemFreeSize] as? NSNumber
+
+            totalFreeSpace = freeFileSystemSizeInBytes?.uint64Value ?? 0
+
+            print(String(format: "Memory Capacity of %llu.", (totalFreeSpace / 1024) / 1024))
+        } else {
+
+            print("Error Obtaining System Memory Info: Domain = \((error as NSError?)?.domain ?? ""), Code = \((error as NSError?)?.code ?? 0)")
+        }
+
+        return totalFreeSpace
     }
+    
 
     var usedDiskSpaceInBytes:Int64 {
        return totalDiskSpaceInBytes - freeDiskSpaceInBytes
