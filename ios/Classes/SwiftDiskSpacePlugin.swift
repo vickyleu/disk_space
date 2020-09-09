@@ -64,33 +64,47 @@ extension UIDevice {
 //        }
 //    }
     //  Converted to Swift 5.2 by Swiftify v5.2.23024 - https://swiftify.com/
-    var freeDiskSpaceInBytes:UInt64 {
+    var freeDiskSpaceInBytes:Int64 {
 
-        var totalFreeSpace: UInt64 = 0
+        var totalFreeSpace: Int64 = 0
 
         var error: Error? = nil
 
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).map(\.path)
+        if #available(iOS 11.0, *) {
+            let fileURL = URL(fileURLWithPath: NSHomeDirectory() as String)
+            do {
+                let values = try fileURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+                if let capacity = values.volumeAvailableCapacityForImportantUsage {
+                    print("Available capacity for important usage: \(capacity)")
+                    totalFreeSpace=capacity
+                } else {
+                    print("Capacity is unavailable")
+                }
+            } catch {
+                print("Error retrieving capacity: \(error.localizedDescription)")
+            }
+        }else{
+            let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).map(\.path)
 
-        var dictionary: [FileAttributeKey : Any]? = nil
-        do {
-            dictionary = try FileManager.default.attributesOfFileSystem(forPath: paths.last ?? "")
-        } catch {
+            var dictionary: [FileAttributeKey : Any]? = nil
+            do {
+                dictionary = try FileManager.default.attributesOfFileSystem(forPath: paths.last ?? "")
+            } catch {
+            }
+
+            if let dictionary = dictionary {
+
+                let freeFileSystemSizeInBytes = dictionary[.systemFreeSize] as? NSNumber
+
+                totalFreeSpace = freeFileSystemSizeInBytes?.int64Value ?? 0
+
+                print(String(format: "Memory Capacity of %llu.", (totalFreeSpace / 1024) / 1024))
+            } else {
+
+                print("Error Obtaining System Memory Info: Domain = \((error as NSError?)?.domain ?? ""), Code = \((error as NSError?)?.code ?? 0)")
+            }
         }
-
-        if let dictionary = dictionary {
-
-            let freeFileSystemSizeInBytes = dictionary[.systemFreeSize] as? NSNumber
-
-            totalFreeSpace = freeFileSystemSizeInBytes?.uint64Value ?? 0
-
-            print(String(format: "Memory Capacity of %llu.", (totalFreeSpace / 1024) / 1024))
-        } else {
-
-            print("Error Obtaining System Memory Info: Domain = \((error as NSError?)?.domain ?? ""), Code = \((error as NSError?)?.code ?? 0)")
-        }
-
-        return totalFreeSpace
+         return totalFreeSpace
     }
     
 
